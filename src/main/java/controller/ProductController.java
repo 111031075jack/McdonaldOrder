@@ -3,8 +3,6 @@ package controller;
 import java.io.IOException;
 import java.util.Base64;
 
-import com.mysql.cj.x.protobuf.MysqlxCrud.Insert;
-
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
@@ -13,6 +11,8 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
+import model.dto.ProductDTO;
+import service.ProductService;
 
 /**
  * 商品 Controller
@@ -35,8 +35,10 @@ import jakarta.servlet.http.Part;
 @MultipartConfig(
 		maxFileSize = 2*1024*1024, // 2MB
 		maxRequestSize = 3*1024*1024 // 3MB
-		)
+)
 public class ProductController extends HttpServlet {
+	
+	private ProductService productService = new ProductService();
 	
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -53,21 +55,17 @@ public class ProductController extends HttpServlet {
 	
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		
 		String action = req.getParameter("action");
 		
 		switch(action) {
-			case "insert" -> insert(req,resp);
-			case "update" -> update(req,resp);
-			case "delete" -> delete(req,resp);
-			
+			case "insert" -> insert(req, resp);
 		}
 		
 	}
 	
 	// 新增商品
 	private void insert(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-		// 一般欄位
+		// 一般表單欄位
 		String name = req.getParameter("name");
 		String category = req.getParameter("category");
 		String price = req.getParameter("price");
@@ -78,30 +76,46 @@ public class ProductController extends HttpServlet {
 		String imageBase64 = Base64.getEncoder().encodeToString(imageBytes);
 		String imageType = imagePart.getContentType();
 		
+		// 透過表單欄位資料來建立 DTO
+		ProductDTO dto = new ProductDTO();
+		dto.setName(name);
+		dto.setCategory(category);
+		dto.setPrice(Integer.parseInt(price));
+		dto.setStock(Integer.parseInt(stock));
+		dto.setImageBase64(imageBase64);
+		dto.setImageType(imageType);
+		
+		String title = "新增商品";
+		String legend = "新增商品";
+		String result = "新增成功";
+		try {
+			// 新增
+			productService.create(dto);
+		} catch (Exception e) {
+			result = "新增失敗: " + e;
+		}
+		
+		// 重導
+		RequestDispatcher rd = req.getRequestDispatcher("/WEB-INF/views/product_result.jsp");
+		req.setAttribute("title", title);
+		req.setAttribute("legend", legend);
+		req.setAttribute("result", result);
+		rd.forward(req, resp);
+		
+		/*
 		// 資料印出觀察
 		String html = """
-				name = %s <p />
-				category = %s <p />
-				price = %s <p />
-				stock = %s <p />
-				imageBase64 = %s <p />
-				imageType = %s <p />
-				""".formatted(name,category, price, stock, imageBase64, imageType);
-
-		resp.getWriter().print(html);				
-		resp.getWriter().print("<img src = 'data:%s;base64 %s'>".formatted(imageType, imageBase64));
+				name = %s <p/ >
+				category = %s <p/ >
+				price = %s <p/ >
+				stock = %s <p/ >
+				imageBase64 = %s <p/ >
+				imageType = %s <p/ >
+				""".formatted(name, category, price, stock, imageBase64, imageType);
 		
-		
-	}
-	
-	
-	private void update(HttpServletRequest req, HttpServletResponse resp) {
-		
-	}
-	
-	
-	private void delete(HttpServletRequest req, HttpServletResponse resp) {
-	
+		resp.getWriter().print(html);
+		resp.getWriter().print("<img src='data:%s;base64,%s'>".formatted(imageType, imageBase64));
+		*/
 	}
 	
 	// 顯示新增表單
